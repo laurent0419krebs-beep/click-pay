@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#079447">
+<title>CLICK & PAY</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7f5;color:#17231d;font-family:Arial,Helvetica,sans-serif}
+header{background:#fff;border-bottom:1px solid #ddd;padding:14px;position:sticky;top:0;z-index:5}
+.top{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.logo{font-size:25px;font-weight:900}.logo b{color:#ff9f1c}
+nav{display:flex;gap:7px;overflow:auto;max-width:1100px;margin:10px auto 0}nav button{border:0;padding:9px 12px;border-radius:10px;background:#edf4ef;white-space:nowrap}nav button.active{background:#079447;color:#fff}
+main{max-width:1100px;margin:auto;padding:18px}.hero{background:linear-gradient(135deg,#079447,#05612f);color:#fff;border-radius:24px;padding:28px;margin-bottom:18px}.hero h1{font-size:clamp(34px,8vw,62px);margin:0}.hero p{font-size:17px}
+input,select{width:100%;padding:14px;border:1px solid #d8e0db;border-radius:12px;background:#fff;font-size:16px}.search{margin:14px 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.card,.panel{background:#fff;border:1px solid #dfe7e2;border-radius:18px;padding:15px}.pic{height:125px;border-radius:14px;background:#edf7f1;display:grid;place-items:center;font-size:55px}.mut{color:#68756e;font-size:13px}.price{font-weight:900;font-size:20px;margin:8px 0}.promo{color:#9a5a00;background:#fff0d3;padding:4px 7px;border-radius:20px;font-size:12px}.btn{border:0;border-radius:11px;padding:11px 14px;font-weight:800}.primary{background:#079447;color:#fff}.full{width:100%}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.qty button{border:0;border-radius:8px;padding:7px 11px}.qty{display:flex;align-items:center;gap:10px}
+.cartbar{position:fixed;bottom:16px;right:16px;background:#079447;color:#fff;border:0;border-radius:30px;padding:14px 18px;font-weight:900;box-shadow:0 8px 25px #0003;z-index:8}
+.overlay{position:fixed;inset:0;background:#0007;z-index:10}.drawer{position:fixed;right:0;top:0;height:100%;width:min(450px,100%);background:#fff;z-index:11;padding:18px;overflow:auto}
+.modal{position:fixed;inset:0;background:#0007;z-index:20;display:grid;place-items:center;padding:18px}.modalbox{width:min(500px,100%);background:#fff;border-radius:20px;padding:22px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{background:#fff;border:1px solid #dfe7e2;border-radius:16px;padding:18px}.stat strong{display:block;font-size:26px;margin-top:6px}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #e5ebe7}
+@media(max-width:650px){.top{align-items:flex-start}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pic{height:100px}.card{padding:10px}.hero{padding:22px}main{padding:12px}}
+</style>
+</head>
+<body>
+<header>
+<div class="top"><div class="logo">CLICK <b>& PAY</b></div><button class="btn" id="cartTop" onclick="openCart()">🛒 <span id="cartCount">0</span></button></div>
+<nav id="nav"></nav>
+</header>
+<main id="main"></main>
+<div id="layer"></div>
+<script>
+(function(){
+"use strict";
+var products=[
+{id:1,n:"Riz local 25 kg",c:"Alimentation",p:12500,e:"🍚",s:147,promo:false},
+{id:2,n:"Huile Dinor 5 L",c:"Alimentation",p:5900,e:"🫗",s:86,promo:true},
+{id:3,n:"Sucre 1 kg",c:"Alimentation",p:1500,e:"🧂",s:42,promo:false},
+{id:4,n:"Lait Nido 400 g",c:"Alimentation",p:2000,e:"🥛",s:95,promo:true},
+{id:5,n:"Savon Palmolive",c:"Hygiène",p:1000,e:"🧼",s:120,promo:false},
+{id:6,n:"Jus d'orange 1 L",c:"Boissons",p:1500,e:"🧃",s:35,promo:true},
+{id:7,n:"Farine 1 kg",c:"Épicerie",p:1200,e:"🌾",s:58,promo:false},
+{id:8,n:"Biscuits chocolat",c:"Épicerie",p:900,e:"🍪",s:73,promo:false}
+];
+var stores=["Supermarché ABC","Super U Bamako","Marché Express"];
+var page="home",query="",cart=[],orders=[];
+
+function money(n){return new Intl.NumberFormat("fr-FR").format(n)+" FCFA"}
+function total(){var t=0;cart.forEach(function(x){var p=find(x.id);t+=p.p*x.q});return t}
+function find(id){for(var i=0;i<products.length;i++)if(products[i].id===id)return products[i];return null}
+function render(){
+ document.getElementById("nav").innerHTML=
+ '<button class="'+(page==="home"?"active":"")+'" onclick="go(\'home\')">🏠 Accueil</button>'+
+ '<button class="'+(page==="stores"?"active":"")+'" onclick="go(\'stores\')">🏪 Magasins</button>'+
+ '<button class="'+(page==="orders"?"active":"")+'" onclick="go(\'orders\')">📦 Commandes</button>'+
+ '<button class="'+(page==="admin"?"active":"")+'" onclick="go(\'admin\')">👑 Admin</button>';
+ document.getElementById("cartCount").textContent=cartCount();
+ document.getElementById("main").innerHTML=page==="home"?home():page==="stores"?stores():page==="orders"?ordersPage():admin();
+}
+function cartCount(){var n=0;cart.forEach(function(x){n+=x.q});return n}
+function go(p){page=p;render();window.scrollTo(0,0)}
+function home(){
+ var list=products.filter(function(p){return p.n.toLowerCase().indexOf(query.toLowerCase())!==-1});
+ var cards=list.map(function(p){
+ return '<article class="card"><div class="pic">'+p.e+'</div><div class="mut">'+p.c+'</div><h3>'+p.n+'</h3>'+
+ (p.promo?'<span class="promo">PROMOTION</span>':'')+
+ '<div class="price">'+money(p.p)+'</div><div class="mut">🟢 Stock : '+p.s+'</div>'+
+ '<button class="btn primary full" onclick="add('+p.id+')">Ajouter au panier</button></article>';
+ }).join("");
+ return '<section class="hero"><h1>CLIQUEZ. PAYEZ.</h1><h1>C\'EST ACHETÉ.</h1><p>Votre supermarché dans votre téléphone.</p></section>'+
+ '<div class="search"><input id="search" placeholder="🔎 Rechercher un produit..." value="'+escapeHtml(query)+'" oninput="query=this.value;render()"></div>'+
+ '<div class="row"><h2>🔥 Produits</h2><span class="promo">PRIX EN FCFA</span></div><div class="grid">'+cards+'</div>';
+}
+function stores(){
+ return '<h1>🏪 Nos magasins</h1><div class="grid">'+stores.map(function(s,i){
+ return '<div class="card"><h2>'+s+'</h2><p>📍 Bamako<br>⭐ 4,'+(7-i)+' / 5<br>🚚 Livraison disponible<br>🏪 Retrait en magasin</p><button class="btn primary full" onclick="go(\'home\')">Voir le catalogue</button></div>';
+ }).join("")+'</div>';
+}
+function ordersPage(){
+ if(!orders.length)return '<h1>📦 Mes commandes</h1><div class="panel">Aucune commande pour le moment.<br><br>Ajoute des produits au panier pour faire un test.</div>';
+ return '<h1>📦 Mes commandes</h1>'+orders.map(function(o){
+ return '<div class="panel"><div class="row"><b>#'+o.id+'</b><b>'+money(o.total)+'</b></div><p>'+o.count+' produit(s) · '+o.mode+'</p><span class="promo">✓ Commande confirmée</span></div>';
+ }).join("");
+}
+function admin(){
+ return '<h1>👑 CLICK & PAY — Administration</h1><div class="stats"><div class="stat">Enseignes<strong>54</strong></div><div class="stat">Magasins<strong>132</strong></div><div class="stat">Clients<strong>3 245</strong></div><div class="stat">Commandes<strong>12 548</strong></div></div>'+
+ '<div class="panel"><h2>Plateforme multi-enseignes</h2><p>Catalogue · stocks · commandes · paiement · livraison · QR Code · Scan & Pay · abonnements.</p></div>';
+}
+function add(id){var x=null;cart.forEach(function(a){if(a.id===id)x=a});if(x)x.q++;else cart.push({id:id,q:1});render()}
+function change(id,d){for(var i=0;i<cart.length;i++)if(cart[i].id===id){cart[i].q+=d;if(cart[i].q<=0)cart.splice(i,1);break}openCart()}
+function openCart(){
+ var html='<div class="overlay" onclick="closeLayer()"></div><aside class="drawer"><div class="row"><h2>🛒 Mon panier</h2><button class="btn" onclick="closeLayer()">✕</button></div>';
+ if(!cart.length)html+='<div class="panel">Panier vide.</div>';
+ cart.forEach(function(x){var p=find(x.id);html+='<div class="panel"><div class="row"><b>'+p.e+' '+p.n+'</b><b>'+money(p.p*x.q)+'</b></div><div class="qty">Quantité : <button onclick="change('+p.id+',-1)">−</button><b>'+x.q+'</b><button onclick="change('+p.id+',1)">+</button></div></div>'});
+ html+='<div class="panel"><div class="row"><b>TOTAL</b><b>'+money(total())+'</b></div></div>';
+ if(cart.length)html+='<button class="btn primary full" onclick="checkout()">Continuer vers paiement</button>';
+ html+='</aside>';document.getElementById("layer").innerHTML=html;
+}
+function checkout(){
+ document.getElementById("layer").innerHTML='<div class="modal"><div class="modalbox"><div class="row"><h2>💳 Finaliser</h2><button class="btn" onclick="closeLayer()">✕</button></div>'+
+ '<label>Mode de réception</label><select id="mode"><option>Retrait en magasin</option><option>Livraison à domicile</option></select>'+
+ '<label>Moyen de paiement</label><select id="pay"><option>Mobile Money</option><option>Visa / Mastercard</option><option>Paiement au retrait</option><option>Paiement à la livraison</option></select>'+
+ '<p class="mut">Démo : aucun paiement réel ne sera débité.</p><button class="btn primary full" onclick="confirmOrder()">CONFIRMER LA COMMANDE</button></div></div>';
+}
+function confirmOrder(){
+ var o={id:"CP"+Math.floor(100000+Math.random()*900000),total:total(),count:cartCount(),mode:document.getElementById("mode").value};
+ orders.unshift(o);cart=[];closeLayer();go("orders");alert("Commande "+o.id+" confirmée !");
+}
+function closeLayer(){document.getElementById("layer").innerHTML=""}
+function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+window.go=go;window.add=add;window.change=change;window.openCart=openCart;window.checkout=checkout;window.confirmOrder=confirmOrder;window.closeLayer=closeLayer;
+render();
+})();
+</script>
+</body>
+</html>
